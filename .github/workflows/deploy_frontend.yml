@@ -1,4 +1,4 @@
-ame: Deploy Frontend
+name: Deploy Frontend
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -17,7 +18,7 @@ jobs:
 
       - name: Build and push frontend Docker image
         run: |
-          docker build -t your-frontend-image-name ./frontend
+          docker build -t your-frontend-image-name .
           docker tag your-frontend-image-name your-dockerhub-username/your-frontend-image-name
           docker push your-dockerhub-username/your-frontend-image-name
 
@@ -30,4 +31,6 @@ jobs:
           script: |
             cd /path/to/your/frontend/project
             docker pull your-dockerhub-username/your-frontend-image-name
-            docker run -d -p 3000:80 your-dockerhub-username/your-frontend-image-name
+            docker stop frontend-container || true
+            docker rm frontend-container || true
+            docker run -d --name frontend-container -p 3000:80 your-dockerhub-username/your-frontend-image-name
