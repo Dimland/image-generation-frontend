@@ -2,11 +2,12 @@ name: Deploy Frontend
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -19,8 +20,10 @@ jobs:
 
       - name: Build and push frontend Docker image
         run: |
-          docker build -t dimland/image-generator-frontend:latest ./
+          COMMIT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          docker build -t dimland/image-generator-frontend:latest -t dimland/image-generator-frontend:$COMMIT_SHA ./
           docker push dimland/image-generator-frontend:latest
+          docker push dimland/image-generator-frontend:$COMMIT_SHA
 
       - name: Deploy frontend to server
         uses: appleboy/ssh-action@v0.1.5
@@ -29,9 +32,90 @@ jobs:
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            mkdir -p /opt/image-generator
+            cd /opt/image-generator
+            
             docker login -u "${{ secrets.DOCKER_USERNAME }}" -p "${{ secrets.DOCKER_PASSWORD }}"
-            docker pull dimland/image-generator-frontend:latest
-            docker stop frontend-container || true
-            docker rm frontend-container || true
-            docker run -d --name frontend-container --restart always --network my-net-devops -p 3001:80 dimland/image-generator-frontend:latest
+            
+            # Проверяем и создаем docker-compose.yml если не существует
+            if [ ! -f docker-compose.yml ]; then
+              echo "Creating docker-compose.yml..."
+              cat > docker-compose.yml << 'EOF'
+            version: '3.4'
+            services:
+              backend:
+                image: dimland/image-generator-backend:latest
+                container_name: backend-container
+                restart: always
+                expose:
+                  - "80"
+                networks:
+                  - my-net-devops
 
+              frontend:
+                image: dimland/image-generator-frontend:latest
+                container_name: frontend-container
+                restart: always
+                expose:
+                  - "80"
+                networks:
+                  - my-net-devops
+
+              nginx:
+                image: nginx:alpine
+                container_name: nginx-container
+                restart: always
+                volumes:
+                  - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+                ports:
+                  - "8085:80"
+                networks:
+                  - my-net-devops
+                depends_on:
+                  - backend
+                  - frontend
+
+            networks:
+              my-net-devops:
+                driver: bridge
+            EOF
+            fi
+            
+            if [ ! -f nginx/default.conf ]; then
+              echo "Creating nginx configuration..."
+              mkdir -p nginx
+              cat > nginx/default.conf << 'EOF'
+            server {
+                listen 80;
+                server_name localhost;
+                
+                location /api/ {
+                    proxy_pass http://backend-container:80;
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+                    proxy_read_timeout 300s;
+                    proxy_connect_timeout 75s;
+                }
+                
+                location / {
+                    proxy_pass http://frontend-container:80;
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+                }
+            }
+            EOF
+            fi
+            
+            if ! docker network ls | grep -q my-net-devops; then
+              echo "Creating Docker network..."
+              docker network create my-net-devops
+            fi
+            
+            docker-compose pull frontend
+            docker-compose up -d frontend
+            
+            docker-compose ps
