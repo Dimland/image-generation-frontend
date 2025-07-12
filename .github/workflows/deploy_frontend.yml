@@ -19,7 +19,7 @@ jobs:
 
       - name: Build and push frontend Docker image
         run: |
-          docker build -t dimland/image-generator-frontend:latest ./frontend
+          docker build -t dimland/image-generator-frontend:latest ./
           docker push dimland/image-generator-frontend:latest
 
       - name: Deploy frontend to server
@@ -33,4 +33,5 @@ jobs:
             docker pull dimland/image-generator-frontend:latest
             docker stop frontend-container || true
             docker rm frontend-container || true
-            docker run -d --name frontend-container --restart always --network my-net -p 3000:80 dimland/image-generator-frontend:latest
+            docker run -d --name frontend-container --restart always --network my-net-devops -p 3001:80 dimland/image-generator-frontend:latest
+
