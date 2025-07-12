@@ -1,0 +1,33 @@
+ame: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and push frontend Docker image
+        run: |
+          docker build -t your-frontend-image-name ./frontend
+          docker tag your-frontend-image-name your-dockerhub-username/your-frontend-image-name
+          docker push your-dockerhub-username/your-frontend-image-name
+
+      - name: SSH into Server and deploy frontend
+        uses: appleboy/ssh-action@v0.1.1
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /path/to/your/frontend/project
+            docker pull your-dockerhub-username/your-frontend-image-name
+            docker run -d -p 3000:80 your-dockerhub-username/your-frontend-image-name
