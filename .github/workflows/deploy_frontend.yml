@@ -19,7 +19,7 @@ jobs:
 
       - name: Build and push frontend Docker image
         run: |
-          docker build -t dimland/image-generator-frontend:latest ./src
+          docker build -t dimland/image-generator-frontend:latest ./
           docker push dimland/image-generator-frontend:latest
 
       - name: Deploy frontend to server
