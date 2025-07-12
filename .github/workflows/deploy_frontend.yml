@@ -116,5 +116,7 @@ jobs:
             
             docker-compose pull frontend
             docker-compose up -d frontend
-            
+
+            docker-compose pull nginx
+            docker-compose up -d nginx
             docker-compose ps
