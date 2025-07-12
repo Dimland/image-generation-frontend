@@ -14,7 +14,7 @@ const ImageGenerator = () => {
     setImageUrl(''); // Очистка изображения перед новым запросом
 
     try {
-      const response = await axios.get('https://localhost:7079/api/ImageGeneration/generate', {
+      const response = await axios.get('https://backend-container:7079/api/ImageGeneration/generate', {
         params: {
           prompt: prompt,
           width: 1024,
