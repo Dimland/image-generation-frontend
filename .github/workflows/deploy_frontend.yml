@@ -37,7 +37,6 @@ jobs:
             
             docker login -u "${{ secrets.DOCKER_USERNAME }}" -p "${{ secrets.DOCKER_PASSWORD }}"
             
-            # Проверяем и создаем docker-compose.yml если не существует
             if [ ! -f docker-compose.yml ]; then
               echo "Creating docker-compose.yml..."
               cat > docker-compose.yml << 'EOF'
