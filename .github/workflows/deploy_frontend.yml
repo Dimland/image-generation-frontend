@@ -22,7 +22,7 @@ jobs:
         run: |
           COMMIT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
           docker build -t dimland/image-generator-frontend:latest -t dimland/image-generator-frontend:$COMMIT_SHA ./
-          docker push dimland/image-generator-frontend:latest
+          docker push dimland/image-generator-frontend:latest 
           docker push dimland/image-generator-frontend:$COMMIT_SHA
 
       - name: Deploy frontend to server
@@ -36,10 +36,9 @@ jobs:
             cd /opt/image-generator
             
             docker login -u "${{ secrets.DOCKER_USERNAME }}" -p "${{ secrets.DOCKER_PASSWORD }}"
-            
-            if [ ! -f docker-compose.yml ]; then
-              echo "Creating docker-compose.yml..."
-              cat > docker-compose.yml << 'EOF'
+
+            echo "Creating docker-compose.yml..."
+            cat > docker-compose.yml << 'EOF'
             version: '3.4'
             services:
               backend:
@@ -78,7 +77,6 @@ jobs:
               my-net-devops:
                 driver: bridge
             EOF
-            fi
             
             echo "Creating nginx configuration..."
             mkdir -p nginx
@@ -86,9 +84,9 @@ jobs:
             server {
                 listen 80;
                 server_name localhost;
-                
+
                 location /api/ {
-                    proxy_pass http://backend-container:8080;
+                    proxy_pass http://backend-container:8080;  # Порт 8080 для бэкенда
                     proxy_set_header Host $host;
                     proxy_set_header X-Real-IP $remote_addr;
                     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -96,7 +94,7 @@ jobs:
                     proxy_read_timeout 300s;
                     proxy_connect_timeout 75s;
                 }
-                
+
                 location / {
                     proxy_pass http://frontend-container:80;
                     proxy_set_header Host $host;
@@ -106,16 +104,17 @@ jobs:
                 }
             }
             EOF
-            fi
-            
+
             if ! docker network ls | grep -q my-net-devops; then
               echo "Creating Docker network..."
               docker network create my-net-devops
             fi
-            
+
             docker-compose pull frontend
             docker-compose up -d frontend
-
             docker-compose pull nginx
             docker-compose up -d nginx
+
+            docker-compose restart nginx
+
             docker-compose ps
