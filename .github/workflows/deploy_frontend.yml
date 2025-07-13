@@ -80,10 +80,9 @@ jobs:
             EOF
             fi
             
-            if [ ! -f nginx/default.conf ]; then
-              echo "Creating nginx configuration..."
-              mkdir -p nginx
-              cat > nginx/default.conf << 'EOF'
+            echo "Creating nginx configuration..."
+            mkdir -p nginx
+            cat > nginx/default.conf << 'EOF'
             server {
                 listen 80;
                 server_name localhost;
